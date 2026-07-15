@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>$juhn</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { height: 100%; overflow: hidden; background: #000; }
+
+  .face {
+    position: fixed;
+    inset: 0;
+    background: url('face.png') center / cover no-repeat #000;
+    z-index: 0;
+  }
+
+  .bottom {
+    position: fixed;
+    left: 0; right: 0; bottom: 0;
+    z-index: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 14px;
+    padding: 60px 16px 28px;
+    background: linear-gradient(to top, rgba(0,0,0,.85), rgba(0,0,0,0));
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif;
+  }
+
+  .ticker {
+    color: #fff;
+    font-size: clamp(2.5rem, 8vw, 4.5rem);
+    font-weight: 900;
+    letter-spacing: 2px;
+    text-shadow: 0 2px 20px rgba(0,0,0,.9);
+  }
+
+  .ca-box {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    max-width: 92vw;
+    padding: 10px 14px;
+    border: 1px solid rgba(255,255,255,.35);
+    border-radius: 10px;
+    background: rgba(0,0,0,.55);
+    backdrop-filter: blur(6px);
+    cursor: pointer;
+    transition: border-color .15s, background .15s;
+  }
+  .ca-box:hover { border-color: #fff; background: rgba(0,0,0,.75); }
+  .ca {
+    color: #fff;
+    font-family: "SF Mono", Consolas, monospace;
+    font-size: clamp(.65rem, 2.4vw, .95rem);
+    word-break: break-all;
+    user-select: all;
+  }
+  .copy-btn {
+    flex-shrink: 0;
+    color: #000;
+    background: #fff;
+    border: none;
+    border-radius: 6px;
+    padding: 6px 12px;
+    font-size: .8rem;
+    font-weight: 700;
+    cursor: pointer;
+  }
+
+  .socials { display: flex; gap: 18px; }
+  .socials a {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 46px; height: 46px;
+    border-radius: 50%;
+    background: rgba(0,0,0,.55);
+    border: 1px solid rgba(255,255,255,.35);
+    transition: transform .15s, border-color .15s;
+  }
+  .socials a:hover { transform: scale(1.12); border-color: #fff; }
+  .socials svg { width: 22px; height: 22px; fill: #fff; }
+</style>
+</head>
+<body>
+
+<div class="face"></div>
+
+<div class="bottom">
+  <div class="ticker">$juhn</div>
+
+  <div class="ca-box" onclick="copyCA()" title="Click to copy">
+    <span class="ca" id="ca">757HeY3oyKhQCPbeTzcVX1PyTWzUvJwVfVUVvXsgpump</span>
+    <button class="copy-btn" id="copyBtn">Copy</button>
+  </div>
+
+  <div class="socials">
+    <a href="https://x.com/homelikenoplace" target="_blank" rel="noopener" aria-label="X (Twitter)">
+      <svg viewBox="0 0 24 24"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
+    </a>
+    <a href="https://x.com/i/communities/1961131954080026957" target="_blank" rel="noopener" aria-label="Community">
+      <svg viewBox="0 0 24 24"><path d="M12 12.75c1.63 0 3.07.39 4.24.9 1.08.48 1.76 1.56 1.76 2.73V18H6v-1.61c0-1.18.68-2.26 1.76-2.73 1.17-.52 2.61-.91 4.24-.91zM4 13c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm1.13 1.1c-.37-.06-.74-.1-1.13-.1-.99 0-1.93.21-2.78.58C.48 14.9 0 15.62 0 16.43V18h4.5v-1.61c0-.83.23-1.61.63-2.29zM20 13c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm4 3.43c0-.81-.48-1.53-1.22-1.85-.85-.37-1.79-.58-2.78-.58-.39 0-.76.04-1.13.1.4.68.63 1.46.63 2.29V18H24v-1.57zM12 6c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3z"/></svg>
+    </a>
+  </div>
+</div>
+
+<script>
+function copyCA() {
+  const ca = document.getElementById('ca').textContent;
+  navigator.clipboard.writeText(ca).then(() => {
+    const btn = document.getElementById('copyBtn');
+    btn.textContent = 'Copied!';
+    setTimeout(() => btn.textContent = 'Copy', 1500);
+  });
+}
+</script>
+
+</body>
+</html>
