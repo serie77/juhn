@@ -43,6 +43,29 @@
     border-radius: 10px;
   }
 
+  /* ---- mcap counter ---- */
+  #mcap {
+    position: fixed;
+    top: 16px; right: 16px;
+    z-index: 40;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 16px;
+    border-radius: 10px;
+    border: 1px solid rgba(255,255,255,.35);
+    background: rgba(0,0,0,.6);
+    backdrop-filter: blur(6px);
+    color: #fff;
+    font-weight: 800;
+    font-size: 1rem;
+    letter-spacing: .5px;
+  }
+  #mcap .label { opacity: .6; font-size: .8rem; font-weight: 700; }
+  #mcap .val { transition: color .3s; }
+  #mcap .val.up { color: #4ade80; }
+  #mcap .val.down { color: #f87171; }
+
   /* ---- lightbox ---- */
   #lightbox {
     position: fixed;
@@ -292,6 +315,8 @@
 
 <div id="collage"></div>
 
+<div id="mcap"><span class="label">MCAP</span><span class="val" id="mcapVal">$—</span></div>
+
 <div id="lightbox" onclick="closeLightbox()">
   <span class="close">&times;</span>
   <img id="lightbox-img" src="" alt="">
@@ -383,9 +408,21 @@ function buildCollage() {
 
   let pool = shuffle(IMAGES);
   while (pool.length < total) pool = pool.concat(shuffle(IMAGES));
-  pool = pool.slice(0, total);
 
-  for (const src of pool) {
+  // assign so no image touches a duplicate (left or above)
+  const chosen = [];
+  for (let i = 0; i < total; i++) {
+    const left = (i % cols !== 0) ? chosen[i - 1] : null;
+    const top  = (i >= cols) ? chosen[i - cols] : null;
+    let pick = pool.findIndex(s => s !== left && s !== top);
+    if (pick === -1) pick = 0;
+    chosen.push(pool.splice(pick, 1)[0]);
+  }
+
+  gridCells = [];
+  gridCols = cols;
+  logicalSrc = chosen.slice();
+  for (const src of chosen) {
     const cell = document.createElement('div');
     cell.className = 'cell';
     const img = document.createElement('img');
@@ -395,7 +432,22 @@ function buildCollage() {
     cell.appendChild(img);
     cell.addEventListener('click', () => openLightbox(img.src));
     grid.appendChild(cell);
+    gridCells.push(cell);
   }
+}
+let gridCells = [], gridCols = 0, logicalSrc = [];
+
+function cellSrc(i) { return logicalSrc[i]; }
+function neighborIdxs(i) {
+  const ns = [];
+  if (i % gridCols !== 0) ns.push(i - 1);
+  if ((i + 1) % gridCols !== 0 && i + 1 < gridCells.length) ns.push(i + 1);
+  if (i - gridCols >= 0) ns.push(i - gridCols);
+  if (i + gridCols < gridCells.length) ns.push(i + gridCols);
+  return ns;
+}
+function clashes(i, src, otherIdx) {
+  return neighborIdxs(i).some(n => n !== otherIdx && cellSrc(n) === src);
 }
 
 function openLightbox(src) {
@@ -423,22 +475,26 @@ function swapRound() {
   if (document.hidden) return;
   if (document.getElementById('lightbox').classList.contains('open')) return;
 
-  const cells = Array.from(document.querySelectorAll('.cell'))
-    .filter(c => !c.matches(':hover'));
-  if (cells.length < 2) return;
+  if (gridCells.length < 2) return;
 
   for (let k = 0; k < SWAPS_PER_ROUND; k++) {
-    const a = cells[Math.floor(Math.random() * cells.length)];
-    const b = cells[Math.floor(Math.random() * cells.length)];
-    if (a === b) continue;
+    const i = Math.floor(Math.random() * gridCells.length);
+    const j = Math.floor(Math.random() * gridCells.length);
+    const a = gridCells[i], b = gridCells[j];
+    if (a === b || a.matches(':hover') || b.matches(':hover')) continue;
+    if (neighborIdxs(i).includes(j)) continue;
+    // skip if swap would put duplicates next to each other
+    if (clashes(i, cellSrc(j), j) || clashes(j, cellSrc(i), i)) continue;
+    // commit the swap logically right away so later checks this round see it
+    [logicalSrc[i], logicalSrc[j]] = [logicalSrc[j], logicalSrc[i]];
     const imgA = a.querySelector('img');
     const imgB = b.querySelector('img');
+    const newA = logicalSrc[i], newB = logicalSrc[j];
     imgA.classList.add('swapping');
     imgB.classList.add('swapping');
     setTimeout(() => {
-      const tmp = imgA.src;
-      imgA.src = imgB.src;
-      imgB.src = tmp;
+      imgA.src = newA;
+      imgB.src = newB;
       imgA.classList.remove('swapping');
       imgB.classList.remove('swapping');
     }, 450);
@@ -472,11 +528,20 @@ function startSpin() {
 
   // build the reel
   const winner = IMAGES[Math.floor(Math.random() * IMAGES.length)];
+  let prev = null;
   for (let i = 0; i < STRIP_LEN; i++) {
     const item = document.createElement('div');
     item.className = 'case-item';
     const img = document.createElement('img');
-    img.src = (i === WINNER_INDEX) ? winner : IMAGES[Math.floor(Math.random() * IMAGES.length)];
+    let src;
+    if (i === WINNER_INDEX) {
+      src = winner;
+    } else {
+      do { src = IMAGES[Math.floor(Math.random() * IMAGES.length)]; }
+      while (src === prev || (i === WINNER_INDEX - 1 && src === winner));
+    }
+    prev = src;
+    img.src = src;
     item.appendChild(img);
     strip.appendChild(item);
   }
@@ -520,6 +585,32 @@ async function copyPfp() {
 }
 
 document.addEventListener('keydown', e => { if (e.key === 'Escape') closeCase(); });
+
+// ---- live market cap (DexScreener API, polls every 5s) ----
+const CA_ADDR = '757HeY3oyKhQCPbeTzcVX1PyTWzUvJwVfVUVvXsgpump';
+function fmtMcap(n) {
+  if (n >= 1e9) return '$' + (n / 1e9).toFixed(2) + 'B';
+  if (n >= 1e6) return '$' + (n / 1e6).toFixed(2) + 'M';
+  if (n >= 1e3) return '$' + (n / 1e3).toFixed(1) + 'K';
+  return '$' + Math.round(n);
+}
+async function updateMcap() {
+  try {
+    const r = await fetch('https://api.dexscreener.com/latest/dex/tokens/' + CA_ADDR);
+    const d = await r.json();
+    const p = d.pairs && d.pairs[0];
+    const mc = p && (p.marketCap ?? p.fdv);
+    if (mc == null) return;
+    const el = document.getElementById('mcapVal');
+    const prev = parseFloat(el.dataset.raw || '0');
+    el.textContent = fmtMcap(mc);
+    el.dataset.raw = mc;
+    el.classList.remove('up', 'down');
+    if (prev && mc !== prev) el.classList.add(mc > prev ? 'up' : 'down');
+  } catch (e) { /* keep last value */ }
+}
+updateMcap();
+setInterval(updateMcap, 5000);
 
 function copyCA() {
   const ca = document.getElementById('ca').textContent;
