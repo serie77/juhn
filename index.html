@@ -66,6 +66,52 @@
   #mcap .val.up { color: #4ade80; }
   #mcap .val.down { color: #f87171; }
 
+  /* ---- top holders dropdown ---- */
+  #holders {
+    display: none;
+    position: absolute;
+    top: 100%;
+    right: 0;
+    padding-top: 10px;
+    width: 300px;
+    cursor: default;
+  }
+  #mcap:hover #holders { display: block; }
+  .holders-inner {
+    background: rgba(0,0,0,.85);
+    border: 1px solid rgba(255,255,255,.35);
+    border-radius: 10px;
+    backdrop-filter: blur(8px);
+    padding: 12px 14px;
+  }
+  .holders-title {
+    color: rgba(255,255,255,.6);
+    font-size: .75rem;
+    font-weight: 700;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    margin-bottom: 8px;
+  }
+  .holder-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 10px;
+    padding: 5px 0;
+    font-size: .85rem;
+    font-weight: 600;
+  }
+  .holder-row a {
+    color: #fff;
+    text-decoration: none;
+    font-family: "SF Mono", Consolas, monospace;
+    opacity: .9;
+  }
+  .holder-row a:hover { text-decoration: underline; opacity: 1; }
+  .holder-row .amt { color: rgba(255,255,255,.55); font-size: .78rem; }
+  .holder-row .pct { color: #f5c518; min-width: 52px; text-align: right; }
+  .holders-note { color: rgba(255,255,255,.35); font-size: .68rem; margin-top: 8px; }
+
   /* ---- lightbox ---- */
   #lightbox {
     position: fixed;
@@ -315,7 +361,15 @@
 
 <div id="collage"></div>
 
-<div id="mcap"><span class="label">MCAP</span><span class="val" id="mcapVal">$—</span></div>
+<div id="mcap">
+  <span class="label">MCAP</span><span class="val" id="mcapVal">$—</span>
+  <div id="holders">
+    <div class="holders-inner">
+      <div class="holders-title">Top 10 holders</div>
+      <div id="holdersList">loading…</div>
+    </div>
+  </div>
+</div>
 
 <div id="lightbox" onclick="closeLightbox()">
   <span class="close">&times;</span>
@@ -611,6 +665,62 @@ async function updateMcap() {
 }
 updateMcap();
 setInterval(updateMcap, 5000);
+
+// ---- top 5 holders (Solana RPC, refreshed on hover, max every 30s) ----
+const RPCS = ['https://greer-651y13-fast-mainnet.helius-rpc.com/', 'https://solana-rpc.publicnode.com', 'https://api.mainnet-beta.solana.com'];
+let holdersFetchedAt = 0;
+
+async function solRpc(method, params) {
+  for (const url of RPCS) {
+    try {
+      const r = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ jsonrpc: '2.0', id: 1, method, params })
+      });
+      const d = await r.json();
+      if (d.result) return d.result;
+    } catch (e) { /* try next rpc */ }
+  }
+  throw new Error('rpc failed');
+}
+
+function shortAddr(a) { return a.slice(0, 4) + '…' + a.slice(-4); }
+function fmtTokens(n) {
+  if (n >= 1e6) return (n / 1e6).toFixed(1) + 'M';
+  if (n >= 1e3) return (n / 1e3).toFixed(1) + 'K';
+  return Math.round(n).toString();
+}
+
+async function loadHolders() {
+  if (Date.now() - holdersFetchedAt < 30000) return;
+  holdersFetchedAt = Date.now();
+  const list = document.getElementById('holdersList');
+  try {
+    const [largest, supply] = await Promise.all([
+      solRpc('getTokenLargestAccounts', [CA_ADDR]),
+      solRpc('getTokenSupply', [CA_ADDR])
+    ]);
+    const top = largest.value.slice(0, 10);
+    const accounts = await solRpc('getMultipleAccounts', [top.map(t => t.address), { encoding: 'jsonParsed' }]);
+    const totalSupply = supply.value.uiAmount;
+
+    list.innerHTML = top.map((t, k) => {
+      const acc = accounts.value[k];
+      const owner = acc?.data?.parsed?.info?.owner || t.address;
+      const pct = (t.uiAmount / totalSupply * 100).toFixed(2);
+      return `<div class="holder-row">
+        <a href="https://solscan.io/account/${owner}" target="_blank" rel="noopener">${shortAddr(owner)}</a>
+        <span class="amt">${fmtTokens(t.uiAmount)}</span>
+        <span class="pct">${pct}%</span>
+      </div>`;
+    }).join('') + '<div class="holders-note">#1 is usually the liquidity pool</div>';
+  } catch (e) {
+    holdersFetchedAt = 0;
+    list.textContent = 'couldn’t load holders';
+  }
+}
+document.getElementById('mcap').addEventListener('mouseenter', loadHolders);
 
 function copyCA() {
   const ca = document.getElementById('ca').textContent;
