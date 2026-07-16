@@ -9,26 +9,89 @@
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
   html, body { height: 100%; overflow: hidden; background: #000; }
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif; }
 
-  .face {
+  /* ---- collage ---- */
+  #collage {
     position: fixed;
     inset: 0;
-    background: url('face.png') center / cover no-repeat #000;
+    display: grid;
+    gap: 4px;
     z-index: 0;
   }
+  .cell {
+    position: relative;
+    overflow: hidden;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: transform .25s cubic-bezier(.34,1.56,.64,1), box-shadow .25s, z-index 0s;
+    filter: brightness(.75);
+  }
+  .cell img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+    transition: opacity .45s ease;
+  }
+  .cell img.swapping { opacity: 0; }
+  .cell:hover {
+    transform: scale(1.22);
+    z-index: 20;
+    filter: brightness(1.05);
+    box-shadow: 0 8px 40px rgba(0,0,0,.9), 0 0 0 2px rgba(255,255,255,.7);
+    border-radius: 10px;
+  }
 
+  /* ---- lightbox ---- */
+  #lightbox {
+    position: fixed;
+    inset: 0;
+    z-index: 100;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0,0,0,.88);
+    backdrop-filter: blur(10px);
+    cursor: zoom-out;
+  }
+  #lightbox.open { display: flex; }
+  #lightbox img {
+    max-width: 92vw;
+    max-height: 92vh;
+    border-radius: 12px;
+    box-shadow: 0 20px 80px rgba(0,0,0,.8);
+    animation: pop .28s cubic-bezier(.34,1.56,.64,1);
+  }
+  #lightbox .close {
+    position: absolute;
+    top: 18px; right: 24px;
+    color: #fff;
+    font-size: 2.2rem;
+    line-height: 1;
+    cursor: pointer;
+    opacity: .7;
+  }
+  #lightbox .close:hover { opacity: 1; }
+  @keyframes pop {
+    from { transform: scale(.82); opacity: 0; }
+    to   { transform: scale(1);   opacity: 1; }
+  }
+
+  /* ---- bottom UI ---- */
   .bottom {
     position: fixed;
     left: 0; right: 0; bottom: 0;
-    z-index: 1;
+    z-index: 30;
     display: flex;
     flex-direction: column;
     align-items: center;
     gap: 14px;
-    padding: 60px 16px 28px;
-    background: linear-gradient(to top, rgba(0,0,0,.85), rgba(0,0,0,0));
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif;
+    padding: 80px 16px 28px;
+    background: linear-gradient(to top, rgba(0,0,0,.92) 40%, rgba(0,0,0,0));
+    pointer-events: none;
   }
+  .bottom > * { pointer-events: auto; }
 
   .ticker {
     color: #fff;
@@ -90,6 +153,126 @@
   .btn:hover { transform: scale(1.06); border-color: #fff; }
   .btn img { height: 22px; width: auto; display: block; }
 
+  /* ---- case opening ---- */
+  #casebox {
+    position: fixed;
+    inset: 0;
+    z-index: 200;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0,0,0,.92);
+    backdrop-filter: blur(12px);
+  }
+  #casebox.open { display: flex; }
+  .case-panel {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 26px;
+    width: 100%;
+  }
+  .case-title {
+    color: #fff;
+    font-size: clamp(1.4rem, 4vw, 2.2rem);
+    font-weight: 900;
+    letter-spacing: 1px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+  }
+  .case-title img { height: clamp(120px, 22vh, 180px); filter: drop-shadow(0 10px 30px rgba(0,0,0,.6)); }
+
+  .case-viewport {
+    position: relative;
+    width: min(900px, 94vw);
+    height: 140px;
+    overflow: hidden;
+    border-radius: 12px;
+    border: 1px solid rgba(255,255,255,.25);
+    background: rgba(255,255,255,.04);
+    box-shadow: inset 0 0 40px rgba(0,0,0,.8);
+  }
+  .case-viewport::before {
+    content: '';
+    position: absolute;
+    left: 50%; top: 0; bottom: 0;
+    width: 3px;
+    transform: translateX(-50%);
+    background: #f5c518;
+    z-index: 5;
+    box-shadow: 0 0 12px #f5c518;
+  }
+  .case-viewport::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: 4;
+    pointer-events: none;
+    background: linear-gradient(to right, rgba(0,0,0,.85), transparent 18%, transparent 82%, rgba(0,0,0,.85));
+  }
+  .case-strip {
+    position: absolute;
+    top: 15px;
+    left: 0;
+    display: flex;
+    gap: 6px;
+    will-change: transform;
+  }
+  .case-item {
+    flex: 0 0 100px;
+    width: 100px;
+    height: 110px;
+    border-radius: 8px;
+    overflow: hidden;
+    border: 1px solid rgba(255,255,255,.15);
+    background: #111;
+  }
+  .case-item img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+  }
+
+  .case-result {
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    gap: 16px;
+  }
+  .case-result.show { display: flex; animation: pop .35s cubic-bezier(.34,1.56,.64,1); }
+  .case-result img {
+    width: min(300px, 70vw);
+    height: min(300px, 70vw);
+    object-fit: cover;
+    border-radius: 16px;
+    border: 3px solid #f5c518;
+    box-shadow: 0 0 60px rgba(245,197,24,.45);
+  }
+  .case-result .won-label {
+    color: #f5c518;
+    font-weight: 900;
+    font-size: 1.3rem;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+  }
+  .case-actions { display: flex; gap: 12px; flex-wrap: wrap; justify-content: center; }
+  .case-actions .btn { cursor: pointer; }
+
+  .case-close {
+    position: absolute;
+    top: 18px; right: 24px;
+    color: #fff;
+    font-size: 2.2rem;
+    line-height: 1;
+    cursor: pointer;
+    opacity: .7;
+    z-index: 210;
+  }
+  .case-close:hover { opacity: 1; }
+
   .socials { display: flex; gap: 18px; }
   .socials a {
     display: flex;
@@ -107,7 +290,31 @@
 </head>
 <body>
 
-<div class="face"></div>
+<div id="collage"></div>
+
+<div id="lightbox" onclick="closeLightbox()">
+  <span class="close">&times;</span>
+  <img id="lightbox-img" src="" alt="">
+</div>
+
+<div id="casebox">
+  <span class="case-close" onclick="closeCase()">&times;</span>
+  <div class="case-panel">
+    <div class="case-title"><img src="juhncase.png" alt=""> juhn case</div>
+    <div class="case-viewport" id="caseViewport">
+      <div class="case-strip" id="caseStrip"></div>
+    </div>
+    <div class="case-result" id="caseResult">
+      <div class="won-label">★ You unboxed your new pfp ★</div>
+      <img id="caseResultImg" src="" alt="your new pfp">
+      <div class="case-actions">
+        <a class="btn" id="caseDownload" download="juhn-pfp.jpg">Download PFP</a>
+        <a class="btn" id="caseCopy" onclick="copyPfp()" style="cursor:pointer">Copy PFP</a>
+        <a class="btn" onclick="startSpin()" style="cursor:pointer">Open another</a>
+      </div>
+    </div>
+  </div>
+</div>
 
 <div class="bottom">
   <div class="ticker">$juhn</div>
@@ -124,6 +331,9 @@
     <a class="btn" href="https://dexscreener.com/solana/abo2wbntztbkrezwu6bhwy7y8rwtxmmmlwlthzmagb2p" target="_blank" rel="noopener">
       <img src="dexscreener.png" alt="Dexscreener"> Dexscreener
     </a>
+    <a class="btn" style="cursor:pointer" onclick="openCase()">
+      Open case <img src="juhncase.png" alt="juhn case" style="height:30px">
+    </a>
   </div>
 
   <div class="socials">
@@ -137,6 +347,180 @@
 </div>
 
 <script>
+const IMAGES = [
+  "HNR3_iRacAAU--N.jpg","HNR_lj9WsAAntmd.jpg","HNScHVrWgAE4Myp.jpg","HNSn1xHaoAA0B7l.jpg",
+  "HNT-tMga0AAiXOF.jpg","HNT7hVUW8AAdpsH.jpg","HNTI18tXEAA-Lv6.png","HNTI4XgW8AEF-P1.jpg",
+  "HNTOPKIXcAE1bdF.png","HNTOkXnWAAAHjdi.jpg","HNTOwsCWUAAxMKW.jpg","HNTOwsKX0AAv7K9.jpg",
+  "HNTQVYBWEAAR_w_.jpg","HNTZtMuXoAANZm3.jpg","HNTllg5XUAA9_ed.jpg","HNTyCsCaoAAAZ_l.jpg",
+  "HNU1fM6WsAAb9E_.jpg","HNUDaxUWwAAgY9K.jpg","HNUJdSwa0AA5gsT.jpg","HNULVeqWQAAywUE.jpg",
+  "HNUNU9facAAt6-a.jpg","HNUNbFzW8AAqxfI.jpg","HNUPGIIbMAAAV7i.jpg","HNURzP0bEAAE8iT.jpg",
+  "HNUW6ykWYAAspge.jpg","HNUgrOOXYAAUQ6M.jpg","HNW-HONagAAErxX.jpg","HNW3_EuXkAA2VIU.jpg",
+  "HNW4wD4aYAAXk_a.jpg","HNX1oNWX0AAYlPs.jpg","HNX1oNZXQAApN3a.jpg","HNXEGribMAAl_q5.jpg",
+  "HNXG1TrawAAIMMI.jpg","HNXIhZVbAAA1cH3.jpg","HNXVA0Mb0AAEBSQ.jpg","HNXWyf7bUAAEvfp.jpg",
+  "HNXXxpbaQAAstM7.jpg","HNXZ7HVbEAAPKUr.jpg","HNXaGUvaYAAFHXQ.jpg"
+];
+
+function shuffle(arr) {
+  const a = arr.slice();
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
+function buildCollage() {
+  const grid = document.getElementById('collage');
+  grid.innerHTML = '';
+  const n = IMAGES.length;
+  const ratio = window.innerWidth / window.innerHeight;
+  let cols = Math.max(3, Math.round(Math.sqrt(n * ratio)));
+  let rows = Math.ceil(n / cols);
+  const total = cols * rows;
+
+  grid.style.gridTemplateColumns = `repeat(${cols}, 1fr)`;
+  grid.style.gridTemplateRows = `repeat(${rows}, 1fr)`;
+
+  let pool = shuffle(IMAGES);
+  while (pool.length < total) pool = pool.concat(shuffle(IMAGES));
+  pool = pool.slice(0, total);
+
+  for (const src of pool) {
+    const cell = document.createElement('div');
+    cell.className = 'cell';
+    const img = document.createElement('img');
+    img.src = src;
+    img.loading = 'lazy';
+    img.alt = 'juhn';
+    cell.appendChild(img);
+    cell.addEventListener('click', () => openLightbox(img.src));
+    grid.appendChild(cell);
+  }
+}
+
+function openLightbox(src) {
+  document.getElementById('lightbox-img').src = src;
+  document.getElementById('lightbox').classList.add('open');
+}
+function closeLightbox() {
+  document.getElementById('lightbox').classList.remove('open');
+}
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeLightbox(); });
+
+let resizeTimer;
+window.addEventListener('resize', () => {
+  clearTimeout(resizeTimer);
+  resizeTimer = setTimeout(buildCollage, 200);
+});
+
+buildCollage();
+
+// ---- dynamic shuffling: swap random tiles every few seconds ----
+const SWAP_INTERVAL = 3000;   // ms between swap rounds
+const SWAPS_PER_ROUND = 4;    // how many pairs swap each round
+
+function swapRound() {
+  if (document.hidden) return;
+  if (document.getElementById('lightbox').classList.contains('open')) return;
+
+  const cells = Array.from(document.querySelectorAll('.cell'))
+    .filter(c => !c.matches(':hover'));
+  if (cells.length < 2) return;
+
+  for (let k = 0; k < SWAPS_PER_ROUND; k++) {
+    const a = cells[Math.floor(Math.random() * cells.length)];
+    const b = cells[Math.floor(Math.random() * cells.length)];
+    if (a === b) continue;
+    const imgA = a.querySelector('img');
+    const imgB = b.querySelector('img');
+    imgA.classList.add('swapping');
+    imgB.classList.add('swapping');
+    setTimeout(() => {
+      const tmp = imgA.src;
+      imgA.src = imgB.src;
+      imgB.src = tmp;
+      imgA.classList.remove('swapping');
+      imgB.classList.remove('swapping');
+    }, 450);
+  }
+}
+setInterval(swapRound, SWAP_INTERVAL);
+
+// ---- csgo-style case opening ----
+const ITEM_W = 100, GAP = 6, STEP = ITEM_W + GAP;
+const STRIP_LEN = 60;      // total tiles in the reel
+const WINNER_INDEX = 52;   // where the winner sits
+let spinning = false;
+
+function openCase() {
+  document.getElementById('casebox').classList.add('open');
+  startSpin();
+}
+function closeCase() {
+  if (spinning) return;
+  document.getElementById('casebox').classList.remove('open');
+}
+
+function startSpin() {
+  if (spinning) return;
+  spinning = true;
+
+  document.getElementById('caseResult').classList.remove('show');
+  const strip = document.getElementById('caseStrip');
+  const viewport = document.getElementById('caseViewport');
+  strip.innerHTML = '';
+
+  // build the reel
+  const winner = IMAGES[Math.floor(Math.random() * IMAGES.length)];
+  for (let i = 0; i < STRIP_LEN; i++) {
+    const item = document.createElement('div');
+    item.className = 'case-item';
+    const img = document.createElement('img');
+    img.src = (i === WINNER_INDEX) ? winner : IMAGES[Math.floor(Math.random() * IMAGES.length)];
+    item.appendChild(img);
+    strip.appendChild(item);
+  }
+
+  // reset position
+  strip.style.transition = 'none';
+  strip.style.transform = 'translateX(0)';
+  void strip.offsetWidth; // force reflow
+
+  // land on winner: center of winner tile under the marker, with slight random offset
+  const jitter = (Math.random() - 0.5) * (ITEM_W * 0.6);
+  const target = WINNER_INDEX * STEP + ITEM_W / 2 - viewport.clientWidth / 2 + jitter;
+
+  strip.style.transition = 'transform 6.5s cubic-bezier(.12,.85,.15,1)';
+  strip.style.transform = `translateX(${-target}px)`;
+
+  strip.addEventListener('transitionend', () => {
+    spinning = false;
+    const resultImg = document.getElementById('caseResultImg');
+    resultImg.src = winner;
+    document.getElementById('caseDownload').href = winner;
+    document.getElementById('caseResult').classList.add('show');
+  }, { once: true });
+}
+
+async function copyPfp() {
+  const btn = document.getElementById('caseCopy');
+  try {
+    const img = document.getElementById('caseResultImg');
+    const canvas = document.createElement('canvas');
+    canvas.width = img.naturalWidth;
+    canvas.height = img.naturalHeight;
+    canvas.getContext('2d').drawImage(img, 0, 0);
+    const blob = await new Promise(r => canvas.toBlob(r, 'image/png'));
+    await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]);
+    btn.textContent = 'Copied!';
+  } catch (e) {
+    btn.textContent = 'Copy failed :(';
+  }
+  setTimeout(() => btn.textContent = 'Copy PFP', 1500);
+}
+
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeCase(); });
+
 function copyCA() {
   const ca = document.getElementById('ca').textContent;
   navigator.clipboard.writeText(ca).then(() => {
